@@ -1,13 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	kvStore "go-first-website/kvStore"
 	"net/http"
 )
 
-var messages = make(map[string]string)
+var kvStoreInstance = kvStore.KeyValueStore{}
 
 func main() {
 	loadMessages()
@@ -40,7 +39,7 @@ func handleMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 func showAllMessages(w http.ResponseWriter, r *http.Request) {
-	for id, message := range messages {
+	for id, message := range kvStoreInstance.GetList() {
 		_, _ = fmt.Fprintf(w, "ID: %s, Message: %s\n", id, message)
 	}
 }
@@ -49,7 +48,7 @@ func saveMessage(w http.ResponseWriter, r *http.Request) {
 	message := r.FormValue("message")
 	id := r.FormValue("id")
 
-	messages[id] = message
+	kvStoreInstance.Add(id, message)
 	saveMessages()
 }
 
@@ -57,7 +56,7 @@ func handleSingleMessage(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")
 	idWithComillas := "\"" + id + "\""
 
-	message, ok := messages[idWithComillas]
+	message, ok := kvStoreInstance.Get(idWithComillas)
 	if !ok {
 		http.Error(w, "Message not found", http.StatusNotFound)
 		return
@@ -66,14 +65,9 @@ func handleSingleMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func loadMessages() {
-	data, err := ioutil.ReadFile("messages.txt")
-	if err != nil {
-		return
-	}
-	json.Unmarshal(data, &messages)
+	kvStoreInstance.Load("messages.txt")
 }
 
 func saveMessages() {
-	data, _ := json.Marshal(messages)
-	ioutil.WriteFile("messages.txt", data, 0644)
+	kvStoreInstance.Save("messages.txt")
 }
